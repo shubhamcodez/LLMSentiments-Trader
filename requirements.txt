@@ -1,1 +1,4 @@
 csp
+tensorflow
+transformers
+torch
