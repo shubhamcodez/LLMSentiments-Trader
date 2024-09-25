@@ -1,5 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
+import torch.nn.functional as F
 
 # Load the FinBERT tokenizer and model
 tokenizer = AutoTokenizer.from_pretrained("yiyanghkust/finbert-tone")
@@ -14,17 +15,24 @@ def analyze_sentiment(text):
     with torch.no_grad():
         outputs = model(**inputs)
     
-    # Get the predicted label
+    # Get the predicted label and apply softmax to get probabilities
     logits = outputs.logits
-    predicted_class = torch.argmax(logits, dim=1).item()
+    probabilities = F.softmax(logits, dim=1)
+    
+    # Extract probabilities for each sentiment
+    negative_score = probabilities[0][0].item()
+    neutral_score = probabilities[0][1].item()
+    positive_score = probabilities[0][2].item()
     
     # Map the predicted class index to the sentiment label
     sentiment_mapping = {0: "negative", 1: "neutral", 2: "positive"}
+    predicted_class = torch.argmax(logits, dim=1).item()
     sentiment = sentiment_mapping[predicted_class]
     
-    return sentiment
+    return sentiment, negative_score, neutral_score, positive_score
 
 # Example usage
 text = "The stock price increased significantly after the announcement of the merger."
-sentiment = analyze_sentiment(text)
+sentiment, neg, neu, pos = analyze_sentiment(text)
 print(f"Sentiment: {sentiment}")
+print(f"Scores -> Negative: {neg}, Neutral: {neu}, Positive: {pos}")
