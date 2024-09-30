@@ -4,6 +4,7 @@ import numpy as np
 from csp.adapters.csv import CSVReader
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from datetime import datetime
 
 class PortfolioData(csp.Struct):
     timestamp: int
@@ -17,33 +18,33 @@ class PortfolioData(csp.Struct):
     CPR_MI: float
     VMW: float
     BCS: float
-    T7731: float  # 7731.T
+    T7731: float
     TTM: float
     HD: float
-    FTT_TO: float  # FTT.TO
+    FTT_TO: float
     NVAX: float
-    AKER_OL: float  # AKER.OL
-    AKE_PA: float  # AKE.PA
-    SECUB_ST: float  # SECUB.ST
-    LXS_F: float  # LXS.F
-    CRR_UN_TO: float  # CRR.UN.TO
+    AKER_OL: float
+    AKE_PA: float
+    SECUB_ST: float
+    LXS_F: float
+    CRR_UN_TO: float
     TRN_MI: float
-    T8473: float  # 8473.T
+    T8473: float
     PYCR: float
-    CON_DE: float  # CON.DE
-    ARG_TO: float  # ARG.TO
-    KXS_TO: float  # KXS.TO
-    LOOMIS_ST: float  # LOOMIS.ST
-    CGX_TO: float  # CGX.TO
-    DPM_TO: float  # DPM.TO
+    CON_DE: float
+    ARG_TO: float
+    KXS_TO: float
+    LOOMIS_ST: float
+    CGX_TO: float
+    DPM_TO: float
     LDO_MI: float
     AVDX: float
     BRCC: float
-    SIS_TO: float  # SIS.TO
+    SIS_TO: float
     INNV: float
     AMPS: float
     ZIP: float
-    STC_V: float  # STC.V
+    STC_V: float
     FIVN: float
     EQIX: float
     LSAK: float
@@ -56,6 +57,15 @@ class PortfolioData(csp.Struct):
     WPM: float
     FA: float
 
+def time_converter(column, tz=None):
+    def convert(row):
+        v = row[column]
+        dt = datetime.utcfromtimestamp(int(v)).replace(tzinfo=None)
+        if tz is not None:
+            dt = tz.localize(dt)
+        return dt
+    return convert
+
 @csp.node
 def calculate_portfolio_metrics(data: PortfolioData, starting_balance: float, risk_free_rate: float = 0.02):
     portfolio_values = []
@@ -66,21 +76,17 @@ def calculate_portfolio_metrics(data: PortfolioData, starting_balance: float, ri
     def update(timestamp, *positions):
         nonlocal peak, max_drawdown
         
-        # Calculate total portfolio value (assuming price is 1 for simplicity)
         total_value = sum(positions) + starting_balance
         portfolio_values.append(total_value)
         
-        # Calculate return
         if len(portfolio_values) > 1:
             returns.append((total_value / portfolio_values[-2]) - 1)
         
-        # Update max drawdown
         if total_value > peak:
             peak = total_value
         drawdown = (peak - total_value) / peak
         max_drawdown = max(max_drawdown, drawdown)
         
-        # Calculate metrics
         total_pnl = total_value - starting_balance
         sharpe_ratio = np.mean(returns) / np.std(returns) if len(returns) > 1 else 0
         information_ratio = (np.mean(returns) - risk_free_rate) / np.std(returns) if len(returns) > 1 else 0
@@ -95,27 +101,22 @@ def calculate_portfolio_metrics(data: PortfolioData, starting_balance: float, ri
         }
 
     return csp.map(update)(
-        data.timestamp, data.AAPL, data.TSLA, data.SNY, data.WFC, 
-        data.INTC, data.UBS, data.BA, data.CPR_MI, data.VMW, data.BCS,
-        data.T7731, data.TTM, data.HD, data.FTT_TO, data.NVAX,
-        data.AKER_OL, data.AKE_PA, data.SECUB_ST, data.LXS_F,
-        data.CRR_UN_TO, data.TRN_MI, data.T8473, data.PYCR,
-        data.CON_DE, data.ARG_TO, data.KXS_TO, data.LOOMIS_ST,
-        data.CGX_TO, data.DPM_TO, data.LDO_MI, data.AVDX,
-        data.BRCC, data.SIS_TO, data.INNV, data.AMPS, data.ZIP,
-        data.STC_V, data.FIVN, data.EQIX, data.LSAK, data.KELYB,
-        data.CXT, data.PRA, data.LAB, data.PHI, data.MIRM,
-        data.WPM, data.FA
+        data.timestamp, data.AAPL, data.TSLA, data.SNY, data.WFC, data.INTC, data.UBS, data.BA, data.CPR_MI, data.VMW, 
+        data.BCS, data.T7731, data.TTM, data.HD, data.FTT_TO, data.NVAX, data.AKER_OL, data.AKE_PA, data.SECUB_ST, 
+        data.LXS_F, data.CRR_UN_TO, data.TRN_MI, data.T8473, data.PYCR, data.CON_DE, data.ARG_TO, data.KXS_TO, 
+        data.LOOMIS_ST, data.CGX_TO, data.DPM_TO, data.LDO_MI, data.AVDX, data.BRCC, data.SIS_TO, data.INNV, data.AMPS, 
+        data.ZIP, data.STC_V, data.FIVN, data.EQIX, data.LSAK, data.KELYB, data.CXT, data.PRA, data.LAB, data.PHI, 
+        data.MIRM, data.WPM, data.FA
     )
 
 @csp.graph
 def portfolio_analysis(csv_path: str, starting_balance: float):
-    reader = CSVReader(csv_path, delimiter=' ')
+    reader = CSVReader(csv_path, time_converter('timestamp'), delimiter=' ')
     data = reader.subscribe(PortfolioData)
     return calculate_portfolio_metrics(data, starting_balance)
 
 # Set up the graph
-csv_path = "path/to/your/csv/file.csv"
+csv_path = "portfolio_positions.csv"  # Update this path
 starting_balance = 100000  # Example starting balance
 graph = portfolio_analysis(csv_path, starting_balance)
 
