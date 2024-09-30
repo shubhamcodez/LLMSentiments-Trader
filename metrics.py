@@ -1,38 +1,73 @@
-from jsonlines import InvalidLineError
-import sys
+import csp
 import pandas as pd
 import numpy as np
-import csv
-import transformers
-import csp
-import torch
-from datetime import *
-from csp.adapters.csv import *
-from transformers import pipeline
+from csp.adapters.csv import CSVReader
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 class PortfolioData(csp.Struct):
-    ticker: str
     timestamp: int
-    position: float
+    AAPL: float
+    TSLA: float
+    SNY: float
+    WFC: float
+    INTC: float
+    UBS: float
+    BA: float
+    CPR_MI: float
+    VMW: float
+    BCS: float
+    T7731: float  # 7731.T
+    TTM: float
+    HD: float
+    FTT_TO: float  # FTT.TO
+    NVAX: float
+    AKER_OL: float  # AKER.OL
+    AKE_PA: float  # AKE.PA
+    SECUB_ST: float  # SECUB.ST
+    LXS_F: float  # LXS.F
+    CRR_UN_TO: float  # CRR.UN.TO
+    TRN_MI: float
+    T8473: float  # 8473.T
+    PYCR: float
+    CON_DE: float  # CON.DE
+    ARG_TO: float  # ARG.TO
+    KXS_TO: float  # KXS.TO
+    LOOMIS_ST: float  # LOOMIS.ST
+    CGX_TO: float  # CGX.TO
+    DPM_TO: float  # DPM.TO
+    LDO_MI: float
+    AVDX: float
+    BRCC: float
+    SIS_TO: float  # SIS.TO
+    INNV: float
+    AMPS: float
+    ZIP: float
+    STC_V: float  # STC.V
+    FIVN: float
+    EQIX: float
+    LSAK: float
+    KELYB: float
+    CXT: float
+    PRA: float
+    LAB: float
+    PHI: float
+    MIRM: float
+    WPM: float
+    FA: float
 
 @csp.node
 def calculate_portfolio_metrics(data: PortfolioData, starting_balance: float, risk_free_rate: float = 0.02):
-    portfolio = {}
     portfolio_values = []
     returns = []
     max_drawdown = 0
     peak = starting_balance
 
-    def update(ticker, timestamp, position):
+    def update(timestamp, *positions):
         nonlocal peak, max_drawdown
         
-        # Update portfolio
-        portfolio[ticker] = position
-        
         # Calculate total portfolio value (assuming price is 1 for simplicity)
-        total_value = sum(portfolio.values()) + starting_balance
+        total_value = sum(positions) + starting_balance
         portfolio_values.append(total_value)
         
         # Calculate return
@@ -59,11 +94,23 @@ def calculate_portfolio_metrics(data: PortfolioData, starting_balance: float, ri
             'max_drawdown': max_drawdown
         }
 
-    return csp.map(update)(data.ticker, data.timestamp, data.position)
+    return csp.map(update)(
+        data.timestamp, data.AAPL, data.TSLA, data.SNY, data.WFC, 
+        data.INTC, data.UBS, data.BA, data.CPR_MI, data.VMW, data.BCS,
+        data.T7731, data.TTM, data.HD, data.FTT_TO, data.NVAX,
+        data.AKER_OL, data.AKE_PA, data.SECUB_ST, data.LXS_F,
+        data.CRR_UN_TO, data.TRN_MI, data.T8473, data.PYCR,
+        data.CON_DE, data.ARG_TO, data.KXS_TO, data.LOOMIS_ST,
+        data.CGX_TO, data.DPM_TO, data.LDO_MI, data.AVDX,
+        data.BRCC, data.SIS_TO, data.INNV, data.AMPS, data.ZIP,
+        data.STC_V, data.FIVN, data.EQIX, data.LSAK, data.KELYB,
+        data.CXT, data.PRA, data.LAB, data.PHI, data.MIRM,
+        data.WPM, data.FA
+    )
 
 @csp.graph
 def portfolio_analysis(csv_path: str, starting_balance: float):
-    reader = CSVReader(csv_path, delimiter=',')
+    reader = CSVReader(csv_path, delimiter=' ')
     data = reader.subscribe(PortfolioData)
     return calculate_portfolio_metrics(data, starting_balance)
 
