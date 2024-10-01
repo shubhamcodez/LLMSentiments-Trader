@@ -1,153 +1,140 @@
-import csp
 import pandas as pd
 import numpy as np
-from csp.adapters.csv import CSVReader
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from datetime import datetime
+import matplotlib.dates as mdates
 
-class PortfolioData(csp.Struct):
-    timestamp: int
-    AAPL: float
-    TSLA: float
-    SNY: float
-    WFC: float
-    INTC: float
-    UBS: float
-    BA: float
-    CPR_MI: float
-    VMW: float
-    BCS: float
-    T7731: float
-    TTM: float
-    HD: float
-    FTT_TO: float
-    NVAX: float
-    AKER_OL: float
-    AKE_PA: float
-    SECUB_ST: float
-    LXS_F: float
-    CRR_UN_TO: float
-    TRN_MI: float
-    T8473: float
-    PYCR: float
-    CON_DE: float
-    ARG_TO: float
-    KXS_TO: float
-    LOOMIS_ST: float
-    CGX_TO: float
-    DPM_TO: float
-    LDO_MI: float
-    AVDX: float
-    BRCC: float
-    SIS_TO: float
-    INNV: float
-    AMPS: float
-    ZIP: float
-    STC_V: float
-    FIVN: float
-    EQIX: float
-    LSAK: float
-    KELYB: float
-    CXT: float
-    PRA: float
-    LAB: float
-    PHI: float
-    MIRM: float
-    WPM: float
-    FA: float
 
-def time_converter(column, tz=None):
-    def convert(row):
-        v = row[column]
-        dt = datetime.utcfromtimestamp(int(v)).replace(tzinfo=None)
-        if tz is not None:
-            dt = tz.localize(dt)
-        return dt
-    return convert
+# Load the stocks data
+stocks_df = pd.read_csv("data/price_data.csv")
 
-@csp.node
-def calculate_portfolio_metrics(data: PortfolioData, starting_balance: float, risk_free_rate: float = 0.02):
-    portfolio_values = []
-    returns = []
-    max_drawdown = 0
-    peak = starting_balance
+# Load the portfolio positions data
+benchmark_df = pd.read_csv("data/benchmark_news_portfolio.csv")
+our_portfolio_df = pd.read_csv("data/portfolio_positions.csv")
 
-    def update(timestamp, *positions):
-        nonlocal peak, max_drawdown
-        
-        total_value = sum(positions) + starting_balance
-        portfolio_values.append(total_value)
-        
-        if len(portfolio_values) > 1:
-            returns.append((total_value / portfolio_values[-2]) - 1)
-        
-        if total_value > peak:
-            peak = total_value
-        drawdown = (peak - total_value) / peak
-        max_drawdown = max(max_drawdown, drawdown)
-        
-        total_pnl = total_value - starting_balance
-        sharpe_ratio = np.mean(returns) / np.std(returns) if len(returns) > 1 else 0
-        information_ratio = (np.mean(returns) - risk_free_rate) / np.std(returns) if len(returns) > 1 else 0
-        
-        return {
-            'timestamp': timestamp,
-            'total_value': total_value,
-            'total_pnl': total_pnl,
-            'sharpe_ratio': sharpe_ratio,
-            'information_ratio': information_ratio,
-            'max_drawdown': max_drawdown
-        }
+# Convert 'timestamp' to datetime format for stocks_df and our_portfolio_df
+stocks_df['timestamp'] = pd.to_datetime(stocks_df['timestamp'], format='%H:%M:%S', errors='coerce')
+our_portfolio_df['timestamp'] = pd.to_datetime(our_portfolio_df['timestamp'], format='%H:%M:%S', errors='coerce')
 
-    return csp.map(update)(
-        data.timestamp, data.AAPL, data.TSLA, data.SNY, data.WFC, data.INTC, data.UBS, data.BA, data.CPR_MI, data.VMW, 
-        data.BCS, data.T7731, data.TTM, data.HD, data.FTT_TO, data.NVAX, data.AKER_OL, data.AKE_PA, data.SECUB_ST, 
-        data.LXS_F, data.CRR_UN_TO, data.TRN_MI, data.T8473, data.PYCR, data.CON_DE, data.ARG_TO, data.KXS_TO, 
-        data.LOOMIS_ST, data.CGX_TO, data.DPM_TO, data.LDO_MI, data.AVDX, data.BRCC, data.SIS_TO, data.INNV, data.AMPS, 
-        data.ZIP, data.STC_V, data.FIVN, data.EQIX, data.LSAK, data.KELYB, data.CXT, data.PRA, data.LAB, data.PHI, 
-        data.MIRM, data.WPM, data.FA
-    )
+# Convert benchmark_df timestamp to match the format of stocks_df
+benchmark_df['timestamp'] = pd.to_datetime(benchmark_df['timestamp'], format='%d-%m-%Y %H:%M', errors='coerce')
+benchmark_df['timestamp'] = benchmark_df['timestamp'].dt.strftime('%H:%M:%S')
+benchmark_df['timestamp'] = pd.to_datetime(benchmark_df['timestamp'], format='%H:%M:%S', errors='coerce')
 
-@csp.graph
-def portfolio_analysis(csv_path: str, starting_balance: float):
-    reader = CSVReader(csv_path, time_converter('timestamp'), delimiter=' ')
-    data = reader.subscribe(PortfolioData)
-    return calculate_portfolio_metrics(data, starting_balance)
+# Check for conversion errors and drop rows with NaT values
+for df_name, df in [("stocks", stocks_df), ("benchmark", benchmark_df), ("our portfolio", our_portfolio_df)]:
+    if df['timestamp'].isnull().any():
+        print(f"Warning: Some timestamps could not be converted in the {df_name} DataFrame. Dropping rows with NaT values.")
+        df.dropna(subset=['timestamp'], inplace=True)
 
-# Set up the graph
-csv_path = "portfolio_positions.csv"  # Update this path
-starting_balance = 100000  # Example starting balance
-graph = portfolio_analysis(csv_path, starting_balance)
+# Handle duplicates (average stock prices)
+stocks_df = stocks_df.groupby('timestamp').mean().reset_index()
+stocks_df.fillna(0, inplace=True)
 
-# Set up the plot
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
-lines = [ax1.plot([], [], label=metric)[0] for metric in ['Total Value', 'Total PnL']]
-lines.extend([ax2.plot([], [], label=metric)[0] for metric in ['Sharpe Ratio', 'Information Ratio', 'Max Drawdown']])
+# Merge the DataFrames on 'timestamp'
+merged_benchmark = pd.merge(benchmark_df, stocks_df, on='timestamp', how='inner')
+merged_our_portfolio = pd.merge(our_portfolio_df, stocks_df, on='timestamp', how='inner')
 
-ax1.set_ylabel('USD')
-ax2.set_ylabel('Ratio')
-ax2.set_xlabel('Time')
-
-for ax in (ax1, ax2):
-    ax.legend()
-    ax.grid(True)
-
-# Animation update function
-def update(frame):
-    data = frame
-    for i, key in enumerate(['total_value', 'total_pnl', 'sharpe_ratio', 'information_ratio', 'max_drawdown']):
-        lines[i].set_data(data['timestamp'], data[key])
+# Function to calculate portfolio metrics
+def calculate_portfolio_metrics(merged_df, starting_balance=200000):
+    stocks = ['AAPL', 'TSLA', 'INTC', 'NVAX', 'FIVN', 'EQIX', 'MIRM']
     
-    for ax in (ax1, ax2):
-        ax.relim()
-        ax.autoscale_view()
+    merged_df['Cash Balance'] = starting_balance
+    merged_df['Total Position Value'] = starting_balance
     
-    return lines
+    for stock in stocks:
+        merged_df[f'{stock} Invested'] = 0
+    
+    for i, row in merged_df.iterrows():
+        if i == 0:
+            continue
+        
+        prev_row = merged_df.iloc[i-1]
+        cash_balance = prev_row['Cash Balance']
+        
+        for stock in stocks:
+            position_change = row[f'{stock}_x'] - prev_row[f'{stock}_x']
+            stock_price = row[f'{stock}_y']
+            
+            if position_change > 0:  # Buying
+                money_spent = position_change * stock_price
+                cash_balance -= money_spent
+                merged_df.at[i, f'{stock} Invested'] = prev_row[f'{stock} Invested'] + money_spent
+            elif position_change < 0:  # Selling
+                money_received = -position_change * stock_price
+                cash_balance += money_received
+                merged_df.at[i, f'{stock} Invested'] = prev_row[f'{stock} Invested'] * (row[f'{stock}_x'] / prev_row[f'{stock}_x'])
+            else:
+                merged_df.at[i, f'{stock} Invested'] = prev_row[f'{stock} Invested']
+        
+        merged_df.at[i, 'Cash Balance'] = cash_balance
+    
+    for i, row in merged_df.iterrows():
+        total_value = row['Cash Balance']
+        for stock in stocks:
+            total_value += row[f'{stock}_x'] * row[f'{stock}_y']
+        merged_df.at[i, 'Total Position Value'] = total_value
+    
+    merged_df['PnL'] = merged_df['Total Position Value'] - starting_balance
+    merged_df['Returns'] = merged_df['Total Position Value'].pct_change()
+    
+    window = 20
+    merged_df['Rolling Volatility'] = merged_df['Returns'].rolling(window=window).std() * np.sqrt(252) * 100
+    merged_df['Rolling Sharpe'] = (merged_df['Returns'].rolling(window=window).mean() * 252) / (merged_df['Rolling Volatility'] / 100)
+    merged_df['Drawdown'] = ((merged_df['Total Position Value'] / merged_df['Total Position Value'].cummax()) - 1) * 100
+    
+    return merged_df
 
-# Run the animation
-ani = FuncAnimation(fig, update, frames=graph, interval=100, blit=True)
-plt.show()
+# Calculate metrics for both portfolios
+benchmark_metrics = calculate_portfolio_metrics(merged_benchmark)
+our_portfolio_metrics = calculate_portfolio_metrics(merged_our_portfolio)
 
-# Run the graph
-csp.run(graph)
+# Create comparative plots
+plot_titles = [
+    'Total Position Value Over Time',
+    'Profit and Loss (PnL) Over Time',
+    'Rolling Sharpe Ratio (Window: 20)',
+    'Rolling Volatility (Window: 20)',
+    'Drawdown Over Time'
+]
+
+plot_data = [
+    ('Total Position Value', '$'),
+    ('PnL', '$'),
+    ('Rolling Sharpe', ''),
+    ('Rolling Volatility', '%'),
+    ('Drawdown', '%')
+]
+
+for i, (title, (column, unit)) in enumerate(zip(plot_titles, plot_data)):
+    plt.figure(figsize=(12, 6))
+    plt.plot(benchmark_metrics['timestamp'], benchmark_metrics[column], label='Benchmark Portfolio', color='#1f77b4')
+    plt.plot(our_portfolio_metrics['timestamp'], our_portfolio_metrics[column], label='Our Portfolio', color='#ff7f0e')
+    plt.title(title, fontsize=16)
+    plt.xlabel('Time', fontsize=14)
+    plt.ylabel(f'{column} ({unit})', fontsize=14)
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f'comparative_performance_{i + 1}.png', dpi=300)
+    plt.close()
+
+# Print summary statistics
+def print_portfolio_summary(metrics, name):
+    print(f"\n{name} Portfolio Summary:")
+    print(f"Starting Balance: ${200000:,.2f}")
+    print(f"Ending Balance: ${metrics['Total Position Value'].iloc[-1]:,.2f}")
+    print(f"Total Profit/Loss: ${metrics['PnL'].iloc[-1]:,.2f}")
+    
+    cumulative_returns = (metrics['Total Position Value'].iloc[-1] - 200000) / 200000
+    final_sharpe_ratio = metrics['Rolling Sharpe'].replace(0, np.nan).dropna().mean()
+    average_volatility = metrics['Rolling Volatility'].replace(0, np.nan).dropna().mean()
+    max_drawdown = metrics['Drawdown'].min()
+    
+    print(f"Total Return: {cumulative_returns:.2%}")
+    print(f"Final Sharpe Ratio: {final_sharpe_ratio:.2f}")
+    print(f"Average Volatility: {average_volatility:.2f}%")
+    print(f"Max Drawdown: {max_drawdown:.2f}%")
+
+print_portfolio_summary(benchmark_metrics, "Benchmark")
+print_portfolio_summary(our_portfolio_metrics, "Our")
