@@ -1,4 +1,4 @@
-# FinSentify: Real-Time NER and Sentiment Analysis for Financial News
+# Real-Time NER and Sentiment Analysis for Financial News
 
 **Authors**: Tianqi Wang, Shubham Singh
 
