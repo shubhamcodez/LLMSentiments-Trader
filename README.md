@@ -4,7 +4,7 @@
 
 ## Summary
 
-FinSentify is a real-time news processing application designed for Named Entity Recognition (NER) and sentiment analysis, leveraging large language models (LLMs) like DistilBERT and FinBERT. This project aims to provide actionable insights for hedge funds by analyzing news data, enabling rapid investment decisions.
+LLMSentiments Trader is a real-time news processing application designed for Named Entity Recognition (NER) and sentiment analysis, leveraging large language models (LLMs) like DistilBERT and FinBERT. This project aims to provide actionable insights for hedge funds by analyzing news data, enabling rapid investment decisions.
 
 ## Relevance
 
