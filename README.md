@@ -1,10 +1,31 @@
-# LLMSentiments Trader: Application of Real-Time NER and Sentiment Analysis for Financial News
+# LLMSentiments Trader
+
+## Real-Time NER and Sentiment Analysis for Financial News
 
 **Authors**: Tianqi Wang, Shubham Singh
 
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![DistilBERT](https://img.shields.io/badge/DistilBERT-Transformer-yellow)
+![FinBERT](https://img.shields.io/badge/FinBERT-Financial%20NLP-green)
+![CSP](https://img.shields.io/badge/CSP-Stream%20Processing-red)
+
+---
+
 ## Summary
 
-LLMSentiments Trader is a real-time news processing application designed for Named Entity Recognition (NER) and sentiment analysis, leveraging large language models (LLMs) like DistilBERT and FinBERT. This project aims to provide actionable insights for hedge funds by analyzing news data, enabling rapid investment decisions.
+**LLMSentiments Trader** is a cutting-edge application that leverages large language models (LLMs) like **DistilBERT** and **FinBERT** for real-time Named Entity Recognition (NER) and sentiment analysis of financial news. Designed to provide actionable insights for hedge funds, this project enables rapid investment decisions based on news data analysis. We've integrated the **CSP library** by Point72 for high-speed stream processing, enhancing the overall efficiency of our application.
+
+---
+
+## Features
+
+- Real-time processing of financial news
+- Named Entity Recognition (NER) using DistilBERT
+- Sentiment analysis using FinBERT
+- High-speed stream processing with the CSP library
+- Portfolio construction based on sentiment analysis
+
+---
 
 ## Relevance
 
@@ -41,7 +62,7 @@ The strategy demonstrates that trading based on sentiment analysis can outperfor
 
 ## Conclusion
 
-FinSentify showcases the potential of combining NER and sentiment analysis using LLMs within trading strategies. While initial results are promising, future work should focus on expanding the dataset, fine-tuning models, and implementing risk management techniques to enhance returns.
+It showcases the potential of combining NER and sentiment analysis using LLMs within trading strategies. While initial results are promising, future work should focus on expanding the dataset, fine-tuning models, and implementing risk management techniques to enhance returns.
 
 ## Future Improvements
 
