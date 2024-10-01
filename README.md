@@ -52,6 +52,6 @@ FinSentify showcases the potential of combining NER and sentiment analysis using
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/FinSentify.git
-cd FinSentify
+git clone https://github.com/shubhamcodez/LLMSentiments-Trader.git
+cd LLMSentiments-Trader
 pip install -r requirements.txt
