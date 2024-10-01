@@ -2,3 +2,6 @@ csp
 tensorflow
 transformers
 torch
+matplotlib
+pandas
+numpy
