@@ -1,4 +1,4 @@
-# Real-Time NER and Sentiment Analysis for Financial News
+# LLMSentiments Trader: Application of Real-Time NER and Sentiment Analysis for Financial News
 
 **Authors**: Tianqi Wang, Shubham Singh
 
